@@ -1,0 +1,2 @@
+Requirement already satisfied: selenium in c:\users\hello\anaconda3\envs\food_mlops\lib\site-packages (3.141.0)
+Requirement already satisfied: urllib3 in c:\users\hello\anaconda3\envs\food_mlops\lib\site-packages (from selenium) (2.4.0)

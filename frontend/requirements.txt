@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pandas
+numpy
+xgboost
+yfinance
+statsmodels
+scikit-learn
+google-generativeai
+langchain-experimental
+langchain-google-genai
+langgraph
+selenium
+tqdm
+schedule

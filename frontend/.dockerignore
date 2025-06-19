@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Windows specific
+msedgedriver.exe
+*.exe
+
+# IDE specific
+.vscode/
+.idea/ 

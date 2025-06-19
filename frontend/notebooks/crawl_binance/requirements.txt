@@ -1,0 +1,7 @@
+selenium
+pandas
+msedge-selenium-tools
+webdriver-manager
+requests
+beautifulsoup4
+lxml
