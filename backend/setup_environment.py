@@ -1,5 +1,5 @@
 """
-Environment setup script for Crypto Chatbot
+Environment setup script for Crypto Chatbot (MongoDB Version)
 This script helps you set up the environment variables and check system requirements.
 """
 
@@ -14,8 +14,8 @@ def create_env_file():
     env_content = """# API Keys
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Database Configuration
-DATABASE_URL=postgresql://crypto_user:crypto_password@localhost:5432/crypto_chatbot
+# MongoDB Configuration
+MONGODB_URL=mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1
 
 # Server Configuration - Make accessible from other computers
 HOST=0.0.0.0
@@ -56,8 +56,8 @@ def check_python_packages():
     print("\n🔍 Checking Python packages...")
     
     required_packages = [
-        'fastapi', 'uvicorn', 'sqlalchemy', 'psycopg2-binary', 
-        'pandas', 'python-dotenv'
+        'fastapi', 'uvicorn', 'pymongo', 'motor', 'dnspython',
+        'pandas', 'python-dotenv', 'google-generativeai'
     ]
     
     missing_packages = []
@@ -78,48 +78,47 @@ def check_python_packages():
     print("✅ All required packages are installed!")
     return True
 
-def test_database_connection():
-    """Test database connection."""
+def test_mongodb_connection():
+    """Test MongoDB connection."""
     
-    print("\n🔍 Testing database connection...")
+    print("\n🔍 Testing MongoDB connection...")
     
     try:
-        import psycopg2
+        import pymongo
         from dotenv import load_dotenv
         
         load_dotenv()
         
+        # MongoDB connection string
+        mongodb_url = "mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1"
+        
         # Try to connect
-        conn = psycopg2.connect(
-            host="localhost",
-            port="5432",
-            database="crypto_chatbot",
-            user="crypto_user",
-            password="crypto_password"
-        )
+        client = pymongo.MongoClient(mongodb_url)
         
-        cursor = conn.cursor()
-        cursor.execute("SELECT version();")
-        version = cursor.fetchone()[0]
+        # Test connection
+        client.admin.command('ping')
         
-        print("✅ Database connection successful!")
-        print(f"   PostgreSQL version: {version[:50]}...")
+        # Get server info
+        server_info = client.server_info()
         
-        cursor.close()
-        conn.close()
+        print("✅ MongoDB connection successful!")
+        print(f"   MongoDB version: {server_info['version']}")
+        print(f"   Database: crypto_chatbot")
+        print(f"   Connection: MongoDB Cloud (Atlas)")
+        
+        client.close()
         return True
         
     except ImportError:
-        print("❌ psycopg2 not installed. Run: pip install psycopg2-binary")
+        print("❌ pymongo not installed. Run: pip install pymongo")
         return False
     except Exception as e:
-        print(f"❌ Database connection failed: {e}")
+        print(f"❌ MongoDB connection failed: {e}")
         print("\n🛠️  To fix this:")
-        print("1. Make sure PostgreSQL is running")
-        print("2. Create the database and user in pgAdmin:")
-        print("   CREATE USER crypto_user WITH PASSWORD 'crypto_password';")
-        print("   CREATE DATABASE crypto_chatbot OWNER crypto_user;")
-        print("   GRANT ALL PRIVILEGES ON DATABASE crypto_chatbot TO crypto_user;")
+        print("1. Check your internet connection")
+        print("2. Verify the MongoDB connection string is correct")
+        print("3. Make sure the MongoDB cluster is running")
+        print("4. Check if your IP is whitelisted in MongoDB Atlas")
         return False
 
 def show_next_steps():
@@ -134,12 +133,16 @@ def show_next_steps():
     print("\n🌐 To access from other computers:")
     print("- Find your IP address: ipconfig")
     print("- Other computers can access: http://YOUR_IP:8000")
+    print("\n💾 Database Info:")
+    print("- Using MongoDB Cloud (Atlas)")
+    print("- No local database installation needed")
+    print("- Data is stored in the cloud and accessible from anywhere")
 
 def main():
     """Main setup function."""
     
-    print("🚀 Crypto Chatbot Environment Setup")
-    print("=" * 50)
+    print("🚀 Crypto Chatbot Environment Setup (MongoDB Version)")
+    print("=" * 60)
     
     # Check if we're in the right directory
     if not os.path.exists("main.py"):
@@ -158,17 +161,18 @@ def main():
         print("pip install -r requirements.txt")
         return
     
-    # Step 3: Test database
-    db_connected = test_database_connection()
+    # Step 3: Test MongoDB connection
+    db_connected = test_mongodb_connection()
     
     # Step 4: Show next steps
     show_next_steps()
     
     if db_connected:
         print("\n✅ Setup completed successfully!")
+        print("🌐 MongoDB Cloud connection verified!")
     else:
-        print("\n⚠️  Setup completed but database connection failed")
-        print("Please fix the database connection before proceeding")
+        print("\n⚠️  Setup completed but MongoDB connection failed")
+        print("Please check the connection and try again")
 
 if __name__ == "__main__":
     main() 

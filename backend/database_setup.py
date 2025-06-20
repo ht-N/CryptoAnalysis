@@ -1,106 +1,163 @@
 """
-Database setup script for the Crypto Chatbot application.
-This script helps you create the database and tables.
+MongoDB Database Setup for Crypto Chatbot
+This script sets up the MongoDB database and collections.
 """
 
 import os
-import sys
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import asyncio
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import IndexModel, ASCENDING, TEXT
+from dotenv import load_dotenv
 
-def create_database_if_not_exists(database_url: str, database_name: str):
-    """
-    Creates the database if it doesn't exist.
+# Load environment variables
+load_dotenv()
+
+# MongoDB Configuration
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1")
+DATABASE_NAME = "crypto_chatbot"
+
+class DatabaseSetup:
+    def __init__(self):
+        self.client = None
+        self.db = None
     
-    Args:
-        database_url: PostgreSQL connection URL without database name
-        database_name: Name of the database to create
-    """
+    async def connect(self):
+        """Connect to MongoDB"""
+        try:
+            self.client = AsyncIOMotorClient(MONGODB_URL)
+            self.db = self.client[DATABASE_NAME]
+            
+            # Test connection
+            await self.client.admin.command('ping')
+            print("✅ Connected to MongoDB successfully!")
+            
+            # Get server info
+            server_info = await self.client.server_info()
+            print(f"   MongoDB version: {server_info['version']}")
+            print(f"   Database: {DATABASE_NAME}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to connect to MongoDB: {e}")
+            return False
+    
+    async def create_collections_and_indexes(self):
+        """Create collections and indexes"""
+        try:
+            # Create users collection with indexes
+            users_collection = self.db.users
+            
+            # Create indexes for users collection
+            users_indexes = [
+                IndexModel([("username", ASCENDING)], unique=True),
+                IndexModel([("email", ASCENDING)], unique=True),
+                IndexModel([("created_at", ASCENDING)])
+            ]
+            await users_collection.create_indexes(users_indexes)
+            print("✅ Created 'users' collection with indexes")
+            
+            # Create conversation_history collection with indexes
+            conversations_collection = self.db.conversation_history
+            
+            # Create indexes for conversation_history collection
+            conversation_indexes = [
+                IndexModel([("user_id", ASCENDING)]),
+                IndexModel([("username", ASCENDING)]),
+                IndexModel([("timestamp", ASCENDING)]),
+                IndexModel([("session_id", ASCENDING)]),
+                IndexModel([("conversation_type", ASCENDING)]),
+                IndexModel([("user_question", TEXT), ("bot_answer", TEXT)])  # Text search
+            ]
+            await conversations_collection.create_indexes(conversation_indexes)
+            print("✅ Created 'conversation_history' collection with indexes")
+            
+            # Create news collection with indexes (for future use)
+            news_collection = self.db.news
+            news_indexes = [
+                IndexModel([("title", TEXT), ("content", TEXT)]),  # Text search
+                IndexModel([("timestamp", ASCENDING)]),
+                IndexModel([("source", ASCENDING)])
+            ]
+            await news_collection.create_indexes(news_indexes)
+            print("✅ Created 'news' collection with indexes")
+            
+            # Create predictions collection with indexes (for future use)
+            predictions_collection = self.db.predictions
+            predictions_indexes = [
+                IndexModel([("symbol", ASCENDING)]),
+                IndexModel([("timestamp", ASCENDING)]),
+                IndexModel([("prediction_type", ASCENDING)])
+            ]
+            await predictions_collection.create_indexes(predictions_indexes)
+            print("✅ Created 'predictions' collection with indexes")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to create collections: {e}")
+            return False
+    
+    async def verify_setup(self):
+        """Verify the database setup"""
+        try:
+            # List all collections
+            collections = await self.db.list_collection_names()
+            print(f"\n📊 Database Setup Summary:")
+            print(f"   Database: {DATABASE_NAME}")
+            print(f"   Collections: {', '.join(collections)}")
+            
+            # Check indexes for each collection
+            for collection_name in collections:
+                collection = self.db[collection_name]
+                indexes = await collection.list_indexes().to_list(None)
+                index_names = [idx['name'] for idx in indexes]
+                print(f"   {collection_name} indexes: {len(index_names)} ({', '.join(index_names)})")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to verify setup: {e}")
+            return False
+    
+    async def close(self):
+        """Close database connection"""
+        if self.client:
+            self.client.close()
+            print("🔒 Database connection closed")
+
+async def main():
+    """Main setup function"""
+    print("🚀 MongoDB Database Setup for Crypto Chatbot")
+    print("=" * 60)
+    
+    setup = DatabaseSetup()
+    
     try:
-        # Connect to PostgreSQL server (not to specific database)
-        base_url = database_url.rsplit('/', 1)[0]  # Remove database name from URL
-        conn = psycopg2.connect(base_url + '/postgres')
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cursor = conn.cursor()
+        # Step 1: Connect to MongoDB
+        if not await setup.connect():
+            return
         
-        # Check if database exists
-        cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (database_name,))
-        exists = cursor.fetchone()
+        # Step 2: Create collections and indexes
+        if not await setup.create_collections_and_indexes():
+            return
         
-        if not exists:
-            cursor.execute(f'CREATE DATABASE "{database_name}"')
-            print(f"✅ Database '{database_name}' created successfully!")
-        else:
-            print(f"✅ Database '{database_name}' already exists.")
+        # Step 3: Verify setup
+        if not await setup.verify_setup():
+            return
         
-        cursor.close()
-        conn.close()
+        print("\n✅ MongoDB database setup completed successfully!")
+        print(f"🌐 Connection string: {MONGODB_URL[:50]}...")
+        print("🎯 Next steps:")
+        print("   1. Run: python sample_data.py")
+        print("   2. Run: python main.py")
         
     except Exception as e:
-        print(f"❌ Error creating database: {e}")
-        return False
+        print(f"❌ Setup failed: {e}")
     
-    return True
-
-def setup_database():
-    """
-    Main function to set up the database and tables.
-    """
-    print("🗄️  Setting up PostgreSQL database for Crypto Chatbot...")
-    
-    # Get database URL from environment or use default
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://username:password@localhost:5432/crypto_chatbot")
-    database_url = DATABASE_URL
-    
-    # Extract database name
-    database_name = database_url.split('/')[-1]
-    
-    print(f"Database URL: {database_url}")
-    print(f"Database Name: {database_name}")
-    
-    # Create database if it doesn't exist
-    if not create_database_if_not_exists(database_url, database_name):
-        print("❌ Failed to create database. Please check your PostgreSQL connection.")
-        sys.exit(1)
-    
-    try:
-        # Create engine and connect to the database
-        engine = create_engine(database_url)
-        
-        # Test connection
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT version()"))
-            version = result.fetchone()[0]
-            print(f"✅ Connected to PostgreSQL: {version}")
-        
-        # Import and create tables
-        from main import Base
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created successfully!")
-        
-        # Verify tables were created
-        with engine.connect() as connection:
-            result = connection.execute(text("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            """))
-            tables = [row[0] for row in result.fetchall()]
-            print(f"✅ Created tables: {', '.join(tables)}")
-        
-        print("\n🎉 Database setup completed successfully!")
-        print("\n📋 Next steps:")
-        print("1. Update your .env file with the correct DATABASE_URL")
-        print("2. Start the application with: python main.py")
-        
-    except SQLAlchemyError as e:
-        print(f"❌ SQLAlchemy error: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        sys.exit(1)
+    finally:
+        await setup.close()
 
 if __name__ == "__main__":
-    setup_database() 
+    asyncio.run(main()) 
