@@ -226,4 +226,15 @@ def start_pipeline_scheduler():
 
 
 if __name__ == "__main__":
-    start_pipeline_scheduler() 
+    start_pipeline_scheduler()
+
+# Export graph for LangGraph
+agent = PipelineAgent()
+graph = agent.graph 
+
+# Thêm vào cuối file
+def create_pipeline_graph():
+    agent = PipelineAgent()
+    return agent.graph
+
+graph = create_pipeline_graph()

@@ -83,7 +83,7 @@ async def ask_question(request: AskRequest):
 # For production, you would typically use a process manager like Gunicorn or systemd.
 if __name__ == "__main__":
     # --- Start the background pipeline process ---
-    print("🤖 Starting main application and background pipeline...")
+    print("Starting main application and background pipeline...")
     
     # Create a separate process for the pipeline scheduler
     pipeline_process = multiprocessing.Process(target=run_pipeline_process, daemon=True)
@@ -91,8 +91,8 @@ if __name__ == "__main__":
     
     # Get host and port from environment variables or use defaults
     host = os.getenv("HOST", "127.0.0.1")
-    port = int(os.getenv("PORT", 8000))
+    port = int(os.getenv("PORT", 5000))
 
-    print(f"🚀 Starting FastAPI server on {host}:{port}")
+    print(f"Starting FastAPI server on {host}:{port}")
     # Run the FastAPI app
     uvicorn.run(app, host=host, port=port) 

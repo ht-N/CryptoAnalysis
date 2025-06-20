@@ -11,6 +11,9 @@ google-generativeai
 langchain-experimental
 langchain-google-genai
 langgraph
-selenium
+selenium==4.15.2
+webdriver-manager
 tqdm
 schedule
+tabulate
+psutil

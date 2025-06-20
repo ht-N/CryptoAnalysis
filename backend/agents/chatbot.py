@@ -284,3 +284,13 @@ if __name__ == "__main__":
         print("Please make sure you have run the pipeline first by executing `python run_pipeline.py`")
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}") 
+
+agent = ChatbotAgent()
+graph = agent.graph
+
+# Thêm vào cuối file  
+def create_chatbot_graph():
+    agent = ChatbotAgent()
+    return agent.graph
+
+graph = create_chatbot_graph()

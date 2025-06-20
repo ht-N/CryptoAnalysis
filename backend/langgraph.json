@@ -1,0 +1,10 @@
+{
+    "dependencies": [
+      "."
+    ],
+    "graphs": {
+      "pipeline": "pipeline:graph",
+      "chatbot": "agents.chatbot:graph"
+    },
+    "env": ".env"
+  }
