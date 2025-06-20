@@ -19,6 +19,17 @@ News:
 Sentiment:
 """
 
+PROMPT_TEMPLATE_VIETNAMESE = """
+Bạn là một chuyên gia phân tích cảm xúc, bạn sẽ được cung cấp một tin tức về một đồng tiền mã hóa.
+Phân tích cảm xúc của nội dung tin tức sau và phân loại nó thành một trong các từ: 'positive', 'negative', hoặc 'neutral'.
+Chỉ trả về một từ phân loại.
+
+Tin tức:
+"{{content}}"
+
+Cảm xúc:
+"""
+
 def get_sentiment(content: str, model, prompt_template: str) -> str:
     """
     Gọi Gemini API để lấy cảm xúc của một đoạn văn bản.
@@ -87,7 +98,7 @@ def main():
         coin_name = row['coin_name']
         content = row['content']
         
-        sentiment = get_sentiment(content, model, PROMPT_TEMPLATE)
+        sentiment = get_sentiment(content, model, PROMPT_TEMPLATE_VIETNAMESE)
         results.append({'coin_name': coin_name, 'label': sentiment})
         # Tạm dừng giữa các lần gọi API để tránh vượt quá giới hạn
         time.sleep(2.5) 

@@ -29,6 +29,20 @@ Based on the user's question, find the relevant information in the dataframe and
 "Giá hiện tại của đồng Bitcoin là 144000$". ALWAY answer in Vietnamese, DO NOT answer in any other language.
 """
 
+PANDAS_AGENT_PREFIX_VIETNAMESE = """
+Bạn là một chuyên gia làm việc với pandas dataframes.
+Bạn được cung cấp một dataframe tên `df` chứa dữ liệu dự đoán giá tiền mã hóa. 
+Các cột quan trọng nhất là: 'coin_name', 'combined_gain_percent', 'current_price', và 'combined_prediction' (giá tương lai ước tính).
+
+Nếu người dùng hỏi về giá dự đoán, hãy nhớ trả lời cả giá hiện tại và 'combined_gain_percent' để cho họ biết phần trăm tăng trưởng của đồng coin trong vài ngày tới.
+Khi người dùng hỏi về "growth", "gain", hoặc "tăng trưởng", bạn PHẢI sử dụng cột 'combined_gain_percent' để tìm câu trả lời.
+Khi người dùng hỏi về "price" hoặc "giá", bạn nên sử dụng các cột 'current_price' và 'combined_prediction'.
+
+Phần trăm tăng trưởng nên có định dạng: "2.56%". Nếu phần trăm tăng trưởng bằng không (ví dụ: 0.0%), bạn nên trả lời, ví dụ: "dự kiến đồng Bitcoin ổn định trong vài ngày tới."
+Dựa trên câu hỏi của người dùng, hãy tìm thông tin liên quan trong dataframe và cung cấp câu trả lời ngắn gọn bằng ngôn ngữ tự nhiên, HÃY NHỚ trả lời bằng USD, ví dụ:
+"Giá hiện tại của đồng Bitcoin là 144000$". LUÔN trả lời bằng tiếng Việt, KHÔNG trả lời bằng ngôn ngữ khác.
+"""
+
 # --- 1. Define Agent State ---
 class RAGState(TypedDict):
     question: str
@@ -100,7 +114,7 @@ class ChatbotAgent:
                 self.pandas_agent = create_pandas_dataframe_agent(
                     self.llm,
                     self.predict_df,
-                    prefix=PANDAS_AGENT_PREFIX,
+                    prefix=PANDAS_AGENT_PREFIX_VIETNAMESE,
                     agent_executor_kwargs={"handle_parsing_errors": True},
                     verbose=True,
                     allow_dangerous_code=True
@@ -141,15 +155,15 @@ class ChatbotAgent:
         history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in history])
 
         prompt = f"""
-        Based on the conversation history, classify the user's latest question into one of two categories:
-        1. `price_query`: The user is asking about the current price, estimated price, or predicted gain of one or more specific cryptocurrencies. This includes follow-up questions about other coins.
-        2. `recommendation_query`: The user is asking for a recommendation, analysis, ranking, reliability, or score of which coin to invest in.
+        Dựa trên lịch sử cuộc trò chuyện, phân loại câu hỏi mới nhất của người dùng vào một trong hai danh mục:
+        1. `price_query`: Người dùng đang hỏi về giá hiện tại, giá ước tính, hoặc mức tăng dự đoán của một hoặc nhiều loại tiền mã hóa cụ thể. Bao gồm các câu hỏi tiếp theo về các đồng coin khác.
+        2. `recommendation_query`: Người dùng đang yêu cầu đề xuất, phân tích, xếp hạng, độ tin cậy, hoặc điểm số của đồng coin nào nên đầu tư.
 
-        Conversation History:
+        Lịch sử cuộc trò chuyện:
         {history_str}
 
-        User Question: "{state['question']}"
-        Classification:
+        Câu hỏi của người dùng: "{state['question']}"
+        Phân loại:
         """
         response = self.llm.invoke(prompt)
         route = response.content.strip().lower()
@@ -189,21 +203,21 @@ class ChatbotAgent:
         history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in history])
 
         prompt = f"""
-        You are a crypto analyst assistant. Answer the user's question based on the conversation history and the following data, which includes prediction scores and sentiment analysis scores.
-        The score is described as follow:
-        0 - 1: Không nên đánh
+        Bạn là một trợ lý phân tích tiền mã hóa. Trả lời câu hỏi của người dùng dựa trên lịch sử cuộc trò chuyện và dữ liệu sau đây, bao gồm điểm dự đoán và điểm phân tích cảm xúc.
+        Điểm số được mô tả như sau:
+        0 - 1: Không nên đầu tư
         1 - 2: Trung bình
-        2 - 10: Tốt, nên đánh
+        2 - 10: Tốt, nên đầu tư
 
-        Conversation History:
+        Lịch sử cuộc trò chuyện:
         {history_str}
         
-        Data:
+        Dữ liệu:
         {context}
 
-        User Question: {question}
+        Câu hỏi của người dùng: {question}
 
-        Answer:
+        Trả lời:
         """
         response = self.llm.invoke(prompt)
         return {"answer": response.content}

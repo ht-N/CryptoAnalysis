@@ -18,6 +18,16 @@ News:
 
 Sentiment:
 """
+PROMPT_TEMPLATE_VIETNAMESE = """
+Bạn là một chuyên gia phân tích cảm xúc, bạn sẽ được cung cấp một tin tức về một đồng tiền mã hóa.
+Phân tích cảm xúc của nội dung tin tức sau và phân loại nó thành một trong ba từ này: 'positive', 'negative', hoặc 'neutral'.
+Chỉ trả về một từ phân loại, trong số ba từ này, KHÔNG TRẢ VỀ BẤT KỲ TỪ NÀO KHÁC NGOÀI BA TỪ NÀY.
+
+Tin tức:
+"{{content}}"
+
+Cảm xúc:
+"""
 
 def get_sentiment(content: str, model, prompt_template: str) -> str:
     """
@@ -58,7 +68,7 @@ def get_sentiment(content: str, model, prompt_template: str) -> str:
 def run_sentiment_analysis_flow(
     news_df: pd.DataFrame, 
     model, 
-    prompt_template: str = PROMPT_TEMPLATE
+    prompt_template: str = PROMPT_TEMPLATE_VIETNAMESE
 ) -> pd.DataFrame:
     """
     The main tool function for sentiment analysis.
@@ -122,7 +132,7 @@ def main():
         return
 
     # 4. Run sentiment analysis workflow
-    analysis_results_df = run_sentiment_analysis_flow(df, model)
+    analysis_results_df = run_sentiment_analysis_flow(df, model, PROMPT_TEMPLATE_VIETNAMESE)
 
     # 5. Save results
     analysis_results_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
