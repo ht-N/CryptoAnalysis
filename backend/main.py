@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import os
@@ -24,6 +25,15 @@ app = FastAPI(
     title="Crypto Analysis Chatbot API",
     description="An API to interact with a RAG-based chatbot for cryptocurrency analysis.",
     version="1.0.0"
+)
+
+# ADD CORS MIDDLEWARE - CRITICAL FIX
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],  # Frontend URLs
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],  # Allow OPTIONS for preflight
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Load the agent only once when the application starts.
@@ -78,7 +88,14 @@ async def ask_question(request: AskRequest):
         raise HTTPException(status_code=500, detail=f"An internal error occurred: {str(e)}")
 
 
-# --- 4. Main Execution Block for Local Testing ---
+# --- 4. Health Check Endpoint (Optional but recommended) ---
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint"""
+    return {"status": "healthy", "agent_loaded": agent is not None}
+
+
+# --- 5. Main Execution Block for Local Testing ---
 # This block allows you to run the API locally for testing using Uvicorn.
 # For production, you would typically use a process manager like Gunicorn or systemd.
 if __name__ == "__main__":
@@ -94,5 +111,6 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
 
     print(f"🚀 Starting FastAPI server on {host}:{port}")
+    print(f"📡 CORS enabled for frontend on localhost:8080")
     # Run the FastAPI app
     uvicorn.run(app, host=host, port=port) 
