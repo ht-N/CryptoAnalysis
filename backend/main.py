@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import os
@@ -74,6 +75,15 @@ app = FastAPI(
     title="Crypto Analysis Chatbot API",
     description="An API to interact with a RAG-based chatbot for cryptocurrency analysis.",
     version="1.0.0"
+)
+
+# ADD CORS MIDDLEWARE - CRITICAL FIX
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],  # Frontend URLs
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],  # Allow OPTIONS for preflight
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Load the agent only once when the application starts.
