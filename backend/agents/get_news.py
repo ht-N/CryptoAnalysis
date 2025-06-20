@@ -8,10 +8,83 @@ import pandas as pd
 import time
 import re
 import os
+import asyncio
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ASCENDING, IndexModel
+
+
+async def save_to_mongodb(news_data: list) -> bool:
+    """
+    Save scraped news data to MongoDB.
+    
+    Args:
+        news_data (list): List of dictionaries containing news data
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # MongoDB connection
+        MONGODB_URL = os.getenv("MONGODB_URL", "mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1")
+        DATABASE_NAME = "crypto_chatbot"
+        
+        client = AsyncIOMotorClient(MONGODB_URL)
+        db = client[DATABASE_NAME]
+        
+        # Test connection
+        await client.admin.command('ping')
+        print("✅ Connected to MongoDB successfully!")
+        
+        # Prepare documents for MongoDB
+        documents = []
+        for item in news_data:
+            doc = {
+                "coin_name": item["coin_name"],
+                "content": item["content"],
+                "scraped_at": datetime.utcnow(),
+                "source": "binance_news_scraper",
+                "content_length": len(item["content"]),
+                "status": "active"
+            }
+            documents.append(doc)
+        
+        if documents:
+            # Create indexes for better performance
+            indexes = [
+                IndexModel([("coin_name", ASCENDING)]),
+                IndexModel([("scraped_at", ASCENDING)]),
+                IndexModel([("source", ASCENDING)]),
+                IndexModel([("content", "text")])  # Text search index
+            ]
+            
+            await db.binance_news.create_indexes(indexes)
+            
+            # Insert documents
+            result = await db.binance_news.insert_many(documents)
+            print(f"✅ Inserted {len(result.inserted_ids)} news articles to MongoDB")
+            
+            # Display statistics
+            total_count = await db.binance_news.count_documents({"source": "binance_news_scraper"})
+            print(f"📊 Total news articles in database: {total_count}")
+            
+            client.close()
+            return True
+        else:
+            print("⚠️  No data to save to MongoDB")
+            client.close()
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error saving to MongoDB: {e}")
+        if 'client' in locals():
+            client.close()
+        return False
 
 
 def run_news_scraping_flow(
-    urls_to_process: list
+    urls_to_process: list,
+    save_to_mongo: bool = True
 ) -> pd.DataFrame:
     """
     The main tool function for scraping news content using Selenium with headless Chrome.
@@ -19,6 +92,7 @@ def run_news_scraping_flow(
 
     Args:
         urls_to_process (list): A list of URLs to scrape.
+        save_to_mongo (bool): Whether to automatically save to MongoDB after scraping.
 
     Returns:
         pd.DataFrame: A dataframe containing the scraped data ('coin_name', 'content').
@@ -87,7 +161,24 @@ def run_news_scraping_flow(
         driver.quit()
         print("--- News Scraping Tool Finished ---")
 
-    return pd.DataFrame(all_news_data)
+    # Convert to DataFrame
+    df_result = pd.DataFrame(all_news_data)
+    
+    # Automatically save to MongoDB if requested and data exists
+    if save_to_mongo and all_news_data:
+        print("\n🔄 Saving scraped data to MongoDB...")
+        try:
+            # Run the async MongoDB save function
+            mongo_success = asyncio.run(save_to_mongodb(all_news_data))
+            if mongo_success:
+                print("✅ Successfully saved scraped news to MongoDB!")
+            else:
+                print("⚠️  Failed to save to MongoDB, but CSV will still be created")
+        except Exception as e:
+            print(f"❌ Error during MongoDB save: {e}")
+            print("⚠️  Continuing with CSV save...")
+    
+    return df_result
 
 
 def main():
@@ -120,27 +211,32 @@ def main():
 
     print(f"Found {len(all_urls)} total URLs. Resuming from position {processed_count}.")
     
-    # 3. Run the scraping workflow
-    scraped_df = run_news_scraping_flow(urls_to_process)
+    # 3. Run the scraping workflow (with automatic MongoDB save)
+    scraped_df = run_news_scraping_flow(urls_to_process, save_to_mongo=True)
 
-    # 4. Save results
+    # 4. Save results to CSV (backup)
     if not scraped_df.empty:
         # Append to existing file or create a new one
         if os.path.exists(output_csv_path):
             scraped_df.to_csv(output_csv_path, mode='a', header=False, index=False, encoding='utf-8-sig')
-            print(f"Appended {len(scraped_df)} new articles to {output_csv_path}")
+            print(f"📄 Appended {len(scraped_df)} new articles to {output_csv_path}")
         else:
             scraped_df.to_csv(output_csv_path, index=False, encoding='utf-8-sig')
-            print(f"Created new file and saved {len(scraped_df)} articles to {output_csv_path}")
+            print(f"📄 Created new file and saved {len(scraped_df)} articles to {output_csv_path}")
 
         # 5. Update progress file
         new_processed_count = processed_count + len(urls_to_process)
         with open(progress_file, 'w') as f:
             f.write(str(new_processed_count))
-        print(f"Progress updated to {new_processed_count}.")
+        print(f"📈 Progress updated to {new_processed_count}.")
+        
+        print(f"\n🎉 Scraping completed successfully!")
+        print(f"   💾 Data saved to: MongoDB + {output_csv_path}")
+        print(f"   📊 Articles scraped: {len(scraped_df)}")
+        print(f"   🔄 URLs processed: {len(urls_to_process)}")
 
     else:
-        print("Scraping finished, but no new data was collected.")
+        print("⚠️  Scraping finished, but no new data was collected.")
 
 
 if __name__ == "__main__":

@@ -122,14 +122,18 @@ class AskResponse(BaseModel):
     conversation_id: str
 
 class UserRegisterRequest(BaseModel):
-    username: str
-    email: str
-    full_name: Optional[str] = None
+    name: str
+    age: int
+    currency: int  # Amount in VND
+    description: str
+    address: str
+    country: Optional[str] = "Vietnam"
+    preferred_language: Optional[str] = "vi"
 
 class UserRegisterResponse(BaseModel):
     success: bool
     user_id: str
-    username: str
+    name: str
     message: str
 
 class SaveConversationRequest(BaseModel):
@@ -146,10 +150,15 @@ class SaveConversationResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     user_id: str
-    username: str
-    email: str
-    full_name: Optional[str]
+    name: str
+    age: int
+    currency: int
+    description: str
+    address: str
+    country: str
+    preferred_language: str
     created_at: str
+    updated_at: str
     total_conversations: int
     is_active: bool
 
@@ -284,48 +293,36 @@ async def register_user(request: UserRegisterRequest):
     """
     Register a new user.
     
-    Creates a new user with username, email, and optional full name.
-    Usernames and emails must be unique.
+    Creates a new user with same fields as sample_users collection.
+    Names don't need to be unique since multiple people can have same names.
     """
     try:
-        # Check if username already exists
-        existing_user = await database.users.find_one({"username": request.username})
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Username '{request.username}' already exists"
-            )
-        
-        # Check if email already exists
-        existing_email = await database.users.find_one({"email": request.email})
-        if existing_email:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Email '{request.email}' already exists"
-            )
-        
-        # Create new user
+        # Create new user document (using same structure as sample_users)
         user_doc = {
-            "username": request.username,
-            "email": request.email,
-            "full_name": request.full_name,
+            "name": request.name,
+            "age": request.age,
+            "currency": request.currency,
+            "description": request.description,
+            "address": request.address,
+            "country": request.country,
+            "preferred_language": request.preferred_language,
             "created_at": datetime.utcnow(),
-            "is_active": True
+            "updated_at": datetime.utcnow(),
+            "is_active": True,
+            "join_date": datetime.utcnow().strftime("%Y-%m-%d")
         }
         
+        # Insert into users collection (not sample_users)
         result = await database.users.insert_one(user_doc)
         user_id = str(result.inserted_id)
         
         return {
             "success": True,
             "user_id": user_id,
-            "username": request.username,
-            "message": f"User '{request.username}' registered successfully"
+            "name": request.name,
+            "message": f"User '{request.name}' registered successfully"
         }
         
-    except HTTPException:
-        # Re-raise HTTP exceptions (validation errors)
-        raise
     except Exception as e:
         print(f"Error registering user: {e}")
         raise HTTPException(
@@ -334,31 +331,42 @@ async def register_user(request: UserRegisterRequest):
         )
 
 
-@app.get("/user/{username}", response_model=UserProfileResponse)
-async def get_user_profile(username: str):
+@app.get("/user/{name}", response_model=UserProfileResponse)
+async def get_user_profile(name: str):
     """
     Get a user's profile information including conversation count.
     
     Returns user details and statistics about their conversation history.
     """
     try:
-        # Find user by username
-        user = await database.users.find_one({"username": username})
+        # Find user by name
+        user = await database.users.find_one({"name": name})
         if not user:
             raise HTTPException(
                 status_code=404,
-                detail=f"User '{username}' not found"
+                detail=f"User '{name}' not found"
             )
         
-        # Count user's conversations
-        conversation_count = await database.conversation_history.count_documents({"username": username})
+        # Count user's conversations (search by user_id or name-based username)
+        name_username = name.replace(" ", "_").lower()
+        conversation_count = await database.conversation_history.count_documents({
+            "$or": [
+                {"user_id": str(user["_id"])},
+                {"username": name_username}
+            ]
+        })
         
         return {
             "user_id": str(user["_id"]),
-            "username": user["username"],
-            "email": user["email"],
-            "full_name": user.get("full_name"),
+            "name": user["name"],
+            "age": user["age"],
+            "currency": user["currency"],
+            "description": user["description"],
+            "address": user["address"],
+            "country": user.get("country", "Vietnam"),
+            "preferred_language": user.get("preferred_language", "vi"),
             "created_at": user["created_at"].isoformat(),
+            "updated_at": user.get("updated_at", user["created_at"]).isoformat(),
             "total_conversations": conversation_count,
             "is_active": user.get("is_active", True)
         }
@@ -391,10 +399,15 @@ async def get_all_users(limit: int = 50, offset: int = 0):
         for user in users:
             user_data = {
                 "user_id": str(user["_id"]),
-                "username": user["username"],
-                "email": user["email"],
-                "full_name": user.get("full_name"),
+                "name": user["name"],
+                "age": user["age"],
+                "currency": user["currency"],
+                "description": user["description"],
+                "address": user["address"],
+                "country": user.get("country", "Vietnam"),
+                "preferred_language": user.get("preferred_language", "vi"),
                 "created_at": user["created_at"].isoformat(),
+                "updated_at": user.get("updated_at", user["created_at"]).isoformat(),
                 "is_active": user.get("is_active", True)
             }
             users_list.append(user_data)
