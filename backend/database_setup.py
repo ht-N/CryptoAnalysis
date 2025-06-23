@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # MongoDB Configuration
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1")
+MONGODB_URL = os.getenv("MONGODB_URL", "")
 DATABASE_NAME = "crypto_chatbot"
 
 class DatabaseSetup:
