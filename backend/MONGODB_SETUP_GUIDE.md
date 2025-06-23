@@ -47,7 +47,7 @@ This will:
 GEMINI_API_KEY=your_real_gemini_api_key_here
 
 # MongoDB Configuration
-MONGODB_URL=mongodb+srv://user1:Toilaan123*@mlops1.o9mdodh.mongodb.net/?retryWrites=true&w=majority&appName=mlops1
+MONGODB_URL=
 
 # Server Configuration - Make accessible from other computers
 HOST=0.0.0.0
